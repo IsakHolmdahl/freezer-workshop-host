@@ -1,0 +1,86 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="robots" content="noindex">
+  <title>Get your store</title>
+  <link rel="stylesheet" href="/static/site.css">
+</head>
+<body>
+  <header class="bar">
+    <h1>Ica freezer fleet</h1>
+    <nav><a href="/map">Map</a><a href="/logout">Log out</a></nav>
+  </header>
+  <main class="narrow">
+    <form class="card" id="form">
+      <h2>Get your store</h2>
+      <p class="lead">Each team runs one Ica store with ten freezers. Choose a team name and you are
+        given a store somewhere in Sweden.</p>
+      <label for="team">Team name</label>
+      <input id="team" type="text" maxlength="40" required autofocus>
+      <div class="row"><button type="submit">Create our store</button></div>
+      <div class="error" id="error" role="alert"></div>
+    </form>
+    <section class="card" id="result" hidden>
+      <h2 id="store"></h2>
+      <p class="lead" id="summary"></p>
+      <dl class="facts">
+        <dt>Store endpoint</dt>
+        <dd><code class="copy" id="endpoint"></code>
+          <div class="row"><button class="quiet" data-copy="endpoint">Copy</button></div></dd>
+        <dt>Bearer token</dt>
+        <dd><code class="copy" id="token"></code>
+          <div class="row"><button class="quiet" data-copy="token">Copy</button></div></dd>
+      </dl>
+      <p class="lead" style="margin-top:20px">The token does not expire and works for this store only.
+        This browser remembers it; the organisers can also look it up for you.</p>
+      <div class="row"><button class="quiet" id="forget">Sign up another team</button></div>
+    </section>
+  </main>
+  <script>
+    const $ = (id) => document.getElementById(id);
+    const KEY = "workshop-store";
+
+    function show(store) {
+      $("store").textContent = store.store;
+      $("summary").textContent = `${store.team} runs ${store.store}: ${store.freezers} freezers.`;
+      $("endpoint").textContent = store.endpoint;
+      $("token").textContent = store.token;
+      $("form").hidden = true;
+      $("result").hidden = false;
+    }
+
+    let saved = null;
+    try { saved = JSON.parse(localStorage.getItem(KEY)); } catch {}
+    if (saved) show(saved);
+
+    $("form").addEventListener("submit", async (event) => {
+      event.preventDefault();
+      $("error").textContent = "";
+      const response = await fetch("/site/signup", {
+        method: "POST", headers: {"Content-Type": "application/json"},
+        body: JSON.stringify({team: $("team").value}),
+      });
+      if (response.status === 401) { location.href = "/login"; return; }
+      const body = await response.json();
+      if (!response.ok) { $("error").textContent = body.detail?.message ?? "Could not create the store."; return; }
+      try { localStorage.setItem(KEY, JSON.stringify(body)); } catch {}
+      show(body);
+    });
+
+    document.querySelectorAll("[data-copy]").forEach((button) => button.addEventListener("click", async () => {
+      await navigator.clipboard.writeText($(button.dataset.copy).textContent);
+      button.textContent = "Copied";
+      setTimeout(() => { button.textContent = "Copy"; }, 1500);
+    }));
+
+    $("forget").addEventListener("click", () => {
+      if (!confirm("Leave this store on screen? Make sure the endpoint and token are saved.")) return;
+      try { localStorage.removeItem(KEY); } catch {}
+      $("result").hidden = true;
+      $("form").hidden = false;
+    });
+  </script>
+</body>
+</html>

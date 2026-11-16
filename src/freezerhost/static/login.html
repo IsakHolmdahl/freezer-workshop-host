@@ -1,0 +1,28 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="robots" content="noindex">
+  <title>Workshop</title>
+  <link rel="stylesheet" href="/static/site.css">
+</head>
+<body>
+  <main class="narrow">
+    <form class="card" method="post" action="/login">
+      <h2>Workshop</h2>
+      <p class="lead">Enter the password you got from the organisers.</p>
+      <label for="password">Password</label>
+      <input id="password" name="password" type="password" autofocus required>
+      <input id="next" name="next" type="hidden" value="/">
+      <div class="row"><button type="submit">Continue</button></div>
+      <div class="error" id="error" role="alert"></div>
+    </form>
+  </main>
+  <script>
+    const query = new URLSearchParams(location.search);
+    if (query.get("next")) document.getElementById("next").value = query.get("next");
+    if (query.get("failed")) document.getElementById("error").textContent = "Wrong password.";
+  </script>
+</body>
+</html>

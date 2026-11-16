@@ -1,0 +1,33 @@
+:root {
+  --red: #e3000b; --ink: #1c1c1e; --muted: #6b6b70; --line: #e4e4e7; --paper: #ffffff; --ground: #f6f5f3;
+  --blue: #2563eb; --amber: #d97706; --violet: #7c3aed; --green: #15803d;
+}
+* { box-sizing: border-box; }
+body { margin: 0; font: 16px/1.5 system-ui, -apple-system, "Segoe UI", sans-serif; color: var(--ink);
+       background: var(--ground); }
+header.bar { display: flex; align-items: center; gap: 16px; padding: 12px 20px; background: var(--red);
+             color: #fff; }
+header.bar h1 { font-size: 18px; margin: 0; font-weight: 700; letter-spacing: .01em; }
+header.bar nav { margin-left: auto; display: flex; gap: 16px; }
+header.bar a { color: #fff; text-decoration: none; font-size: 14px; opacity: .9; }
+header.bar a:hover { opacity: 1; text-decoration: underline; }
+main.narrow { max-width: 620px; margin: 40px auto; padding: 0 16px; }
+.card { background: var(--paper); border: 1px solid var(--line); border-radius: 10px; padding: 24px; }
+h2 { margin: 0 0 8px; font-size: 22px; }
+p.lead { color: var(--muted); margin: 0 0 20px; }
+label { display: block; font-size: 14px; font-weight: 600; margin-bottom: 6px; }
+input[type=text], input[type=password] { width: 100%; padding: 10px 12px; font: inherit;
+  border: 1px solid #c9c9ce; border-radius: 8px; }
+input:focus-visible, button:focus-visible { outline: 3px solid #f6a5a9; outline-offset: 1px; }
+button { font: inherit; font-weight: 600; padding: 10px 16px; border-radius: 8px; border: 1px solid var(--red);
+         background: var(--red); color: #fff; cursor: pointer; }
+button.quiet { background: var(--paper); color: var(--ink); border-color: #c9c9ce; font-weight: 500;
+               padding: 4px 10px; font-size: 13px; }
+button:disabled { opacity: .5; cursor: default; }
+.row { display: flex; gap: 10px; margin-top: 14px; }
+.error { color: #b00020; font-size: 14px; margin-top: 10px; min-height: 1.4em; }
+dl.facts { display: grid; grid-template-columns: max-content 1fr; gap: 10px 16px; margin: 20px 0 0; }
+dl.facts dt { color: var(--muted); font-size: 14px; padding-top: 2px; }
+dl.facts dd { margin: 0; min-width: 0; }
+code.copy { display: block; padding: 8px 10px; background: #f2f2f4; border-radius: 6px; font-size: 13px;
+            overflow-wrap: anywhere; font-family: ui-monospace, SFMono-Regular, Menlo, monospace; }

@@ -1,0 +1,185 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="robots" content="noindex">
+  <title>Stores</title>
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
+  <link rel="stylesheet" href="/static/site.css">
+  <style>
+    html, body { height: 100%; }
+    body { display: flex; flex-direction: column; }
+    .layout { flex: 1; min-height: 0; display: grid; grid-template-columns: 1fr 440px; }
+    #map { min-height: 320px; background: #dfe7ea; }
+    aside { overflow-y: auto; border-left: 1px solid var(--line); background: var(--paper); }
+    .totals { display: grid; grid-template-columns: repeat(4, 1fr); border-bottom: 1px solid var(--line); }
+    .totals div { padding: 12px 8px; text-align: center; font-size: 12px; color: var(--muted); }
+    .totals b { display: block; font-size: 22px; color: var(--ink); font-variant-numeric: tabular-nums; }
+    .store { padding: 14px 16px; border-bottom: 1px solid var(--line); cursor: pointer; }
+    .store:hover { background: #fafafa; }
+    .store .top { display: flex; align-items: baseline; gap: 8px; }
+    .store .name { font-weight: 700; }
+    .store .team { color: var(--muted); font-size: 14px; overflow: hidden; text-overflow: ellipsis;
+                   white-space: nowrap; }
+    .badge { margin-left: auto; flex: none; font-size: 12px; font-weight: 700; color: #fff; padding: 2px 9px;
+             border-radius: 999px; white-space: nowrap; }
+    .s1 { background: var(--blue); } .s2 { background: var(--amber); } .s3 { background: var(--violet); }
+    .s4 { background: var(--green); }
+    .line { display: flex; align-items: center; gap: 10px; margin-top: 6px; font-size: 14px; color: var(--muted); }
+    .meter { flex: 1; height: 6px; border-radius: 3px; background: #ececef; overflow: hidden; }
+    .meter span { display: block; height: 100%; background: var(--blue); }
+    .waves { display: flex; gap: 5px; }
+    .wave { width: 26px; height: 20px; border-radius: 4px; font-size: 11px; font-weight: 700; color: #fff;
+            display: grid; place-items: center; background: #c9c9ce; }
+    .wave.attacking { background: var(--amber); } .wave.breached { background: #b00020; }
+    .wave.repelled { background: var(--green); }
+    .alert { color: #b00020; font-weight: 700; }
+    .tools { display: none; flex-wrap: wrap; gap: 6px; margin-top: 10px; }
+    .admin .tools { display: flex; }
+    .tools code { flex-basis: 100%; font-size: 12px; overflow-wrap: anywhere; color: var(--muted); }
+    .empty { padding: 32px 16px; color: var(--muted); text-align: center; }
+    .pin { width: 18px; height: 18px; border-radius: 50%; border: 3px solid #fff; box-shadow: 0 1px 4px #0006; }
+    .pin.hot { animation: pulse 1s infinite; background: #b00020 !important; }
+    @keyframes pulse { 50% { box-shadow: 0 0 0 10px #b0002033; } }
+    @media (prefers-reduced-motion: reduce) { .pin.hot { animation: none; } }
+    @media (max-width: 860px) { .layout { grid-template-columns: 1fr; grid-template-rows: 45vh auto; } }
+  </style>
+</head>
+<body>
+  <header class="bar">
+    <h1>Ica freezer fleet</h1>
+    <nav><a href="/">Get a store</a><a href="/logout">Log out</a></nav>
+  </header>
+  <div class="layout">
+    <div id="map"></div>
+    <aside>
+      <div class="totals" id="totals"></div>
+      <div id="list"><div class="empty">No stores yet.</div></div>
+    </aside>
+  </div>
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+  <script>
+    const COLORS = {1: "#2563eb", 2: "#d97706", 3: "#7c3aed", 4: "#15803d"};
+    const map = L.map("map", {zoomSnap: 0.25}).fitBounds([[55.2, 10.5], [69.1, 24.5]]);
+    L.tileLayer("https://tile.openstreetmap.org/{z}/{x}/{y}.png",
+                {maxZoom: 12, attribution: "&copy; OpenStreetMap contributors"}).addTo(map);
+    const markers = new Map();
+    const open = new Set();
+
+    const el = (tag, cls, text) => {
+      const node = document.createElement(tag);
+      if (cls) node.className = cls;
+      if (text !== undefined) node.textContent = text;
+      return node;
+    };
+    const ago = (iso, now) => {
+      if (!iso) return "no API call yet";
+      const s = Math.max(0, Math.round((new Date(now) - new Date(iso)) / 1000));
+      return s < 90 ? `API call ${s} s ago` : `API call ${Math.round(s / 60)} min ago`;
+    };
+
+    async function act(method, path, question) {
+      if (question && !confirm(question)) return;
+      const response = await fetch(path, {method});
+      if (!response.ok) alert((await response.json()).detail?.message ?? "That did not work.");
+      refresh();
+    }
+
+    function card(store, now, admin) {
+      const hot = store.warm_freezers > 0;
+      const box = el("div", "store");
+      const top = el("div", "top");
+      top.append(el("span", "name", store.name), el("span", "team", store.team),
+                 el("span", `badge s${store.stage}`, `${Math.min(store.stage, 3)} · ${store.stage_label}`));
+      box.append(top);
+
+      const line = el("div", "line");
+      if (store.stage === 1) {
+        const meter = el("div", "meter");
+        const fill = el("span");
+        fill.style.width = `${100 * store.freezers_updated / store.freezers_total}%`;
+        meter.append(fill);
+        line.append(meter, el("span", "", store.detail));
+      } else if (store.stage === 2) {
+        const waves = el("div", "waves");
+        store.waves.forEach((wave, i) => {
+          const chip = el("span", `wave ${wave.state}`, String(i + 1));
+          chip.title = `${wave.name}: ${wave.state}`;
+          waves.append(chip);
+        });
+        line.append(waves, el("span", "", store.detail));
+        if (store.legit_rejected) line.append(el("span", "", `· ${store.legit_rejected} genuine rejected`));
+      } else {
+        line.append(el("span", "", store.detail));
+      }
+      box.append(line);
+
+      const status = el("div", "line");
+      if (hot) status.append(el("span", "alert", `${store.warm_freezers} freezer${store.warm_freezers === 1 ? "" : "s"} thawing, ${store.hottest_c} °C`));
+      status.append(el("span", "", ago(store.last_call_at, now)));
+      box.append(status);
+
+      if (admin) {
+        const tools = el("div", "tools");
+        const button = (label, run) => {
+          const b = el("button", "quiet", label);
+          b.addEventListener("click", (event) => { event.stopPropagation(); run(); });
+          return b;
+        };
+        const base = `/site/admin/stores/${store.id}`;
+        tools.append(
+          button("Release next wave", () => act("POST", `${base}/release-wave`)),
+          button("Skip stage 1", () => act("POST", `${base}/force-stage1`,
+                 `Put all freezers of ${store.name} on the new software?`)),
+          button(store.stage === 4 ? "Undo stage 3 done" : "Stage 3 done", () => act("POST", `${base}/stage3-done`)),
+          button("Delete", () => act("DELETE", base, `Delete ${store.name} (${store.team})? This cannot be undone.`)));
+        if (open.has(store.id)) tools.append(el("code", "", store.endpoint), el("code", "", store.token));
+        else tools.append(button("Show endpoint and token", () => { open.add(store.id); refresh(); }));
+        box.append(tools);
+      }
+      box.addEventListener("click", () => map.flyTo([store.lat, store.lon], 7, {duration: 0.6}));
+      return box;
+    }
+
+    async function refresh() {
+      const response = await fetch("/site/stores");
+      if (response.status === 401) { location.href = "/login?next=/map"; return; }
+      const {role, now, stores} = await response.json();
+      const admin = role === "admin";
+      document.body.classList.toggle("admin", admin);
+
+      const totals = document.getElementById("totals");
+      totals.replaceChildren(...[1, 2, 3, 4].map((stage) => {
+        const cell = el("div");
+        cell.append(el("b", "", String(stores.filter((s) => s.stage === stage).length)),
+                    ["Installing", "Under attack", "New screen", "Done"][stage - 1]);
+        return cell;
+      }));
+
+      const list = document.getElementById("list");
+      list.replaceChildren(...(stores.length ? stores.map((s) => card(s, now, admin))
+                                             : [el("div", "empty", "No stores yet.")]));
+
+      const seen = new Set();
+      for (const store of stores) {
+        seen.add(store.id);
+        const icon = L.divIcon({className: "", iconSize: [18, 18],
+          html: `<div class="pin${store.warm_freezers ? " hot" : ""}" style="background:${COLORS[store.stage]}"></div>`});
+        let marker = markers.get(store.id);
+        if (!marker) {
+          marker = L.marker([store.lat, store.lon]).addTo(map);
+          markers.set(store.id, marker);
+        }
+        marker.setIcon(icon);
+        marker.unbindTooltip();
+        marker.bindTooltip(`${store.name} · ${store.team}`, {direction: "top", offset: [0, -8]});
+      }
+      for (const [id, marker] of markers) if (!seen.has(id)) { marker.remove(); markers.delete(id); }
+    }
+
+    refresh();
+    setInterval(refresh, 3000);
+  </script>
+</body>
+</html>
