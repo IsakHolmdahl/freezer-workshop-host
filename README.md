@@ -48,8 +48,10 @@ Not answering is no defence: requests expire after 90 seconds and count as nothi
 ## Briefs and the factory twist
 
 Stage 1's brief is in the team repository (`docs/features/remote-software-installation.md`).
-The briefs for stages 2 and 3 are here, in `docs/briefs/`, because the team repository
-must not give them away. Hand each out when the team reaches the stage.
+The briefs for stages 2 and 3 are here, in `src/freezerhost/briefs/`, because the team
+repository must not give them away. They are delivered automatically: a team's page
+(`/`, opened by signing up or by entering the store token) shows the stage 2 brief when
+the first wave is released and the stage 3 brief when all four waves are repelled.
 
 In stage 2 the stock factory refuses the work. Every role's prompt ends with a visible
 rule: security work only through a skill named `security-change-procedure`, otherwise
@@ -60,7 +62,8 @@ show up as friction on the Run comparison dashboard.
 
 ## The map (`/map`)
 
-Everyone with the shared password sees the map and the list. Logged in with the
+Everyone with the shared password sees the map and the list (waves are numbered
+only; their names are shown to organisers). Logged in with the
 organiser password you also get, per store: **Release next wave** (do not wait for
 the timer), **Skip stage 1** (for a stuck team), **Stage 3 done**, **Delete**, and
 the store's endpoint and token (for a team that lost them).

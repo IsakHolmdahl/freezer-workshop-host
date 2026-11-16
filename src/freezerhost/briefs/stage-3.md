@@ -1,7 +1,5 @@
 # Stage 3: an energy and doors screen
 
-*Hand this to a team when its four waves are green.*
-
 ## Why
 
 The store manager wants to know which freezers cost the most to run and whether

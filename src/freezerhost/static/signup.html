@@ -4,83 +4,225 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="robots" content="noindex">
-  <title>Get your store</title>
+  <title>Your store</title>
   <link rel="stylesheet" href="/static/site.css">
+  <style>
+    main.team { max-width: 820px; }
+    .card + .card, #briefs { margin-top: 16px; }
+    .or { text-align: center; color: var(--muted); font-size: 14px; margin: 16px 0; }
+    .status { display: flex; flex-wrap: wrap; align-items: center; gap: 10px 14px; margin-top: 6px; }
+    .badge { font-size: 13px; font-weight: 700; color: #fff; padding: 3px 11px; border-radius: 999px; }
+    .s1 { background: var(--blue); } .s2 { background: var(--amber); } .s3 { background: var(--violet); }
+    .s4 { background: var(--green); }
+    .waves { display: flex; gap: 5px; }
+    .wave { width: 26px; height: 20px; border-radius: 4px; font-size: 11px; font-weight: 700; color: #fff;
+            display: grid; place-items: center; background: #c9c9ce; }
+    .wave.attacking { background: var(--amber); } .wave.breached { background: #b00020; }
+    .wave.repelled { background: var(--green); }
+    .alert { color: #b00020; font-weight: 700; }
+    .muted { color: var(--muted); font-size: 14px; }
+    details.creds { margin-top: 16px; }
+    details.creds summary { cursor: pointer; font-weight: 600; font-size: 14px; }
+    .brief { border-left: 5px solid var(--line); }
+    .brief.new { border-left-color: var(--red); }
+    .brief header { display: flex; align-items: center; gap: 10px; margin-bottom: 4px; }
+    .brief header .tag { font-size: 12px; font-weight: 700; color: #fff; background: var(--red);
+                         padding: 2px 8px; border-radius: 999px; }
+    .brief header button { margin-left: auto; }
+    .brief .text h1 { font-size: 22px; margin: 0 0 8px; }
+    .brief .text h2 { font-size: 16px; margin: 20px 0 6px; }
+    .brief .text p, .brief .text li { max-width: 68ch; }
+    .brief .text code { background: #f2f2f4; padding: 1px 5px; border-radius: 4px; font-size: 14px; }
+    details.older > summary { cursor: pointer; font-weight: 600; }
+    details.older[open] > summary { margin-bottom: 12px; }
+  </style>
 </head>
 <body>
   <header class="bar">
     <h1>Ica freezer fleet</h1>
     <nav><a href="/map">Map</a><a href="/logout">Log out</a></nav>
   </header>
-  <main class="narrow">
-    <form class="card" id="form">
+
+  <main class="narrow" id="start">
+    <form class="card" id="signup">
       <h2>Get your store</h2>
       <p class="lead">Each team runs one Ica store with ten freezers. Choose a team name and you are
         given a store somewhere in Sweden.</p>
       <label for="team">Team name</label>
       <input id="team" type="text" maxlength="40" required autofocus>
       <div class="row"><button type="submit">Create our store</button></div>
-      <div class="error" id="error" role="alert"></div>
+      <div class="error" id="signup-error" role="alert"></div>
     </form>
-    <section class="card" id="result" hidden>
-      <h2 id="store"></h2>
-      <p class="lead" id="summary"></p>
-      <dl class="facts">
-        <dt>Store endpoint</dt>
-        <dd><code class="copy" id="endpoint"></code>
-          <div class="row"><button class="quiet" data-copy="endpoint">Copy</button></div></dd>
-        <dt>Bearer token</dt>
-        <dd><code class="copy" id="token"></code>
-          <div class="row"><button class="quiet" data-copy="token">Copy</button></div></dd>
-      </dl>
-      <p class="lead" style="margin-top:20px">The token does not expire and works for this store only.
-        This browser remembers it; the organisers can also look it up for you.</p>
-      <div class="row"><button class="quiet" id="forget">Sign up another team</button></div>
-    </section>
+    <div class="or">or</div>
+    <form class="card" id="open">
+      <h2>Open your store</h2>
+      <p class="lead">Your team already has a store? Enter its token to see where you stand and to read
+        your briefs.</p>
+      <label for="token-in">Store token</label>
+      <input id="token-in" type="password" autocomplete="off" required>
+      <div class="row"><button type="submit">Open</button></div>
+      <div class="error" id="open-error" role="alert"></div>
+    </form>
   </main>
+
+  <main class="narrow team" id="page" hidden>
+    <section class="card">
+      <h2 id="store"></h2>
+      <div class="status">
+        <span class="badge" id="stage"></span>
+        <span class="waves" id="waves"></span>
+        <span id="detail"></span>
+        <span class="alert" id="thawing"></span>
+      </div>
+      <details class="creds" id="creds">
+        <summary>Store endpoint and token</summary>
+        <dl class="facts">
+          <dt>Store endpoint</dt>
+          <dd><code class="copy" id="endpoint"></code>
+            <div class="row"><button class="quiet" data-copy="endpoint">Copy</button></div></dd>
+          <dt>Bearer token</dt>
+          <dd><code class="copy" id="token"></code>
+            <div class="row"><button class="quiet" data-copy="token">Copy</button></div></dd>
+        </dl>
+        <p class="muted">The token does not expire and works for this store only. Share it within your
+          team: anyone who has it can open this page.</p>
+      </details>
+    </section>
+    <div id="briefs"></div>
+    <p class="muted" style="margin-top:16px">This page updates by itself. New briefs appear here when
+      your store reaches the next stage.
+      <button class="quiet" id="leave" style="margin-left:8px">Leave this store</button></p>
+  </main>
+
+  <script src="https://cdn.jsdelivr.net/npm/marked@12.0.2/marked.min.js"></script>
   <script>
     const $ = (id) => document.getElementById(id);
-    const KEY = "workshop-store";
+    const KEY = "workshop-store-token", SEEN = "workshop-briefs-seen";
+    const recall = (key) => { try { return localStorage.getItem(key); } catch { return null; } };
+    const remember = (key, value) => { try { value === null ? localStorage.removeItem(key)
+                                                             : localStorage.setItem(key, value); } catch {} };
+    let token = recall(KEY), timer = null, shown = "";
 
-    function show(store) {
-      $("store").textContent = store.store;
-      $("summary").textContent = `${store.team} runs ${store.store}: ${store.freezers} freezers.`;
-      $("endpoint").textContent = store.endpoint;
-      $("token").textContent = store.token;
-      $("form").hidden = true;
-      $("result").hidden = false;
+    const el = (tag, cls, text) => {
+      const node = document.createElement(tag);
+      if (cls) node.className = cls;
+      if (text !== undefined) node.textContent = text;
+      return node;
+    };
+
+    function copyButton(label, text) {
+      const button = el("button", "quiet", label);
+      button.addEventListener("click", async () => {
+        await navigator.clipboard.writeText(text());
+        button.textContent = "Copied";
+        setTimeout(() => { button.textContent = label; }, 1500);
+      });
+      return button;
     }
 
-    let saved = null;
-    try { saved = JSON.parse(localStorage.getItem(KEY)); } catch {}
-    if (saved) show(saved);
+    function briefCard(brief, isNew) {
+      const card = el("section", "card brief" + (isNew ? " new" : ""));
+      const head = el("header");
+      if (isNew) head.append(el("span", "tag", "New"));
+      head.append(el("span", "muted", `Brief for stage ${brief.stage}`),
+                  copyButton("Copy for your coordinator", () => brief.markdown));
+      const text = el("div", "text");
+      text.innerHTML = marked.parse(brief.markdown);   // our own text, from the server
+      card.append(head, text);
+      return card;
+    }
 
-    $("form").addEventListener("submit", async (event) => {
+    function render(page) {
+      $("store").textContent = `${page.name} · ${page.team}`;
+      $("stage").className = `badge s${page.stage}`;
+      $("stage").textContent = `${Math.min(page.stage, 3)} · ${page.stage_label}`;
+      $("detail").textContent = page.detail;
+      $("thawing").textContent = page.warm_freezers
+        ? `${page.warm_freezers} freezer${page.warm_freezers === 1 ? "" : "s"} thawing, ${page.hottest_c} °C` : "";
+      $("waves").replaceChildren(...(page.stage === 2 ? page.waves.map((wave, i) => {
+        const chip = el("span", `wave ${wave.state}`, String(i + 1));
+        chip.title = `${wave.name}: ${wave.state}`;
+        return chip;
+      }) : []));
+      $("endpoint").textContent = page.endpoint;
+      $("token").textContent = token;
+
+      const key = page.briefs.map((b) => b.stage).join(",");
+      if (key === shown) return;                       // do not redraw under someone who is reading
+      const seen = Number(recall(`${SEEN}:${page.id}`) ?? 0);
+      const [current, ...older] = page.briefs;
+      const isNew = current.stage > seen && current.stage > 1;
+      const nodes = [briefCard(current, isNew)];
+      if (older.length) {
+        const box = el("details", "card older");
+        box.append(el("summary", "", "Earlier briefs"), ...older.map((b) => briefCard(b, false)));
+        nodes.push(box);
+      }
+      $("briefs").replaceChildren(...nodes);
+      if (isNew && shown) document.title = `New brief · ${page.name}`;
+      remember(`${SEEN}:${page.id}`, String(current.stage));
+      shown = key;
+    }
+
+    async function refresh() {
+      const response = await fetch("/site/team", {headers: {Authorization: `Bearer ${token}`}});
+      if (response.status === 401) {
+        const code = (await response.json()).detail?.code;
+        if (code === "login_required") { location.href = "/login"; return false; }
+        leave("No store has that token.");
+        return false;
+      }
+      if (!response.ok) return false;
+      render(await response.json());
+      $("start").hidden = true;
+      $("page").hidden = false;
+      return true;
+    }
+
+    async function enter(value, justCreated) {
+      token = value;
+      remember(KEY, token);
+      $("creds").open = justCreated;
+      if (await refresh()) timer = setInterval(refresh, 5000);
+    }
+
+    function leave(message) {
+      clearInterval(timer);
+      token = null; shown = "";
+      remember(KEY, null);
+      document.title = "Your store";
+      $("page").hidden = true;
+      $("start").hidden = false;
+      $("open-error").textContent = message ?? "";
+    }
+
+    $("signup").addEventListener("submit", async (event) => {
       event.preventDefault();
-      $("error").textContent = "";
+      $("signup-error").textContent = "";
       const response = await fetch("/site/signup", {
         method: "POST", headers: {"Content-Type": "application/json"},
         body: JSON.stringify({team: $("team").value}),
       });
       if (response.status === 401) { location.href = "/login"; return; }
       const body = await response.json();
-      if (!response.ok) { $("error").textContent = body.detail?.message ?? "Could not create the store."; return; }
-      try { localStorage.setItem(KEY, JSON.stringify(body)); } catch {}
-      show(body);
+      if (!response.ok) { $("signup-error").textContent = body.detail?.message ?? "Could not create the store."; return; }
+      enter(body.token, true);
     });
 
-    document.querySelectorAll("[data-copy]").forEach((button) => button.addEventListener("click", async () => {
-      await navigator.clipboard.writeText($(button.dataset.copy).textContent);
-      button.textContent = "Copied";
-      setTimeout(() => { button.textContent = "Copy"; }, 1500);
-    }));
-
-    $("forget").addEventListener("click", () => {
-      if (!confirm("Leave this store on screen? Make sure the endpoint and token are saved.")) return;
-      try { localStorage.removeItem(KEY); } catch {}
-      $("result").hidden = true;
-      $("form").hidden = false;
+    $("open").addEventListener("submit", (event) => {
+      event.preventDefault();
+      $("open-error").textContent = "";
+      enter($("token-in").value.trim(), false);
     });
+
+    $("leave").addEventListener("click", () => {
+      if (confirm("Leave this store on this browser? You need the token to open it again.")) leave();
+    });
+    document.querySelectorAll("[data-copy]").forEach((button) => button.replaceWith(
+      copyButton("Copy", () => $(button.dataset.copy).textContent)));
+    window.addEventListener("focus", () => { if (token) document.title = "Your store"; });
+
+    if (token) enter(token, false);
   </script>
 </body>
 </html>

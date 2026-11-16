@@ -36,6 +36,7 @@ WAVES = [
     ("valid", [("defrost", {"duration_minutes": 100800}), ("set_setpoint", {"setpoint_c": 55.0})]),
 ]
 WAVE_NAMES = ["Unsigned pass", "Expired pass", "Pass for another store", "Valid pass, absurd request"]
+BRIEFS = {stage: (Path(__file__).parent / "briefs" / f"stage-{stage}.md").read_text() for stage in (1, 2, 3)}
 STAGES = {1: "Remote software installation", 2: "Security fix", 3: "New UI element", 4: "Done"}
 
 
@@ -412,6 +413,16 @@ class World:
 
     # ---- organiser ---------------------------------------------------------------------
 
+    def briefs(self, store: Store) -> list[dict]:
+        """The briefs this store has reached, newest first. Stage 2's appears when the attack starts."""
+        reached = [1]
+        if any(wave.released_at is not None for wave in store.waves):
+            reached.append(2)
+        if store.stage2_done_at is not None:
+            reached.append(3)
+        return [{"stage": stage, "title": BRIEFS[stage].splitlines()[0].lstrip("# "), "markdown": BRIEFS[stage]}
+                for stage in reversed(reached)]
+
     def overview(self, store: Store, with_token: bool = False) -> dict:
         target = self.settings.target_version
         updated = sum(freezer.software_version == target for freezer in store.freezers)
@@ -424,7 +435,9 @@ class World:
                 "team": store.team, "created_at": iso(store.created_at), "last_call_at": iso(store.last_call_at),
                 "stage": store.stage, "stage_label": STAGES[store.stage], "detail": detail,
                 "freezers_updated": updated, "freezers_total": len(store.freezers),
-                "waves": [{"name": name, "state": state} for name, state in zip(WAVE_NAMES, states, strict=True)],
+                # The names give the weaknesses away: organisers only.
+                "waves": [{"name": name if with_token else f"Wave {number}", "state": state}
+                          for number, (name, state) in enumerate(zip(WAVE_NAMES, states, strict=True), 1)],
                 "legit_rejected": store.legit_rejected,
                 "warm_freezers": sum(freezer.temperature_c > 0 for freezer in store.freezers),
                 "hottest_c": round(max(freezer.temperature_c for freezer in store.freezers), 1)}

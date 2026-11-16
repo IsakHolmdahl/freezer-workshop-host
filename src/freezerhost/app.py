@@ -208,6 +208,18 @@ def create_app(settings: Settings | None = None, clock: Callable[[], float] = ti
         return {"store": store.name, "city": store.city, "team": store.team, "freezers": len(store.freezers),
                 "endpoint": endpoint(request, store), "token": store.token}
 
+    @site.get("/team", dependencies=[Depends(visitor)])
+    async def team(request: Request, authorization: Annotated[str | None, Header()] = None) -> dict:
+        """What a team sees on its own page: where it stands and the briefs it has reached."""
+        scheme, _, token = (authorization or "").partition(" ")
+        store = world.by_token(token.strip()) if scheme.lower() == "bearer" and token else None
+        if store is None:
+            raise ApiError(401, "unknown_token", "No store has that token.")
+        data = world.overview(store)
+        return {key: data[key] for key in ("id", "name", "team", "stage", "stage_label", "detail", "waves",
+                                           "warm_freezers", "hottest_c")} | {
+            "endpoint": endpoint(request, store), "briefs": world.briefs(store)}
+
     @site.get("/stores")
     async def stores(request: Request, who: Annotated[str, Depends(visitor)]) -> dict:
         rows = []

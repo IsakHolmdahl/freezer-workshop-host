@@ -72,6 +72,7 @@ def test_site_needs_the_password_and_gives_each_team_its_own_store(host):
     assert host.get(base_a, headers=auth_b).status_code == 403
     listing = host.get("/site/stores").json()
     assert listing["role"] == "visitor" and "token" not in listing["stores"][0]
+    assert [w["name"] for w in listing["stores"][0]["waves"]] == ["Wave 1", "Wave 2", "Wave 3", "Wave 4"]
     assert host.post(f"/site/admin/stores/{id_a}/release-wave").status_code == 403
 
 
@@ -216,3 +217,24 @@ def test_a_breach_thaws_the_freezer_and_shows_on_the_map(host):
     overview = host.get("/site/stores").json()["stores"][0]
     assert overview["warm_freezers"] >= 1 and overview["hottest_c"] > 40
     assert overview["waves"][0]["state"] == "breached"
+
+
+def test_team_page_gets_each_brief_when_its_stage_is_reached(host):
+    base, auth, store_id = join(host)
+
+    def stages():
+        page = host.get("/site/team", headers=auth).json()
+        assert page["id"] == store_id and page["endpoint"].endswith(store_id) and "token" not in page
+        return [brief["stage"] for brief in page["briefs"]]
+
+    assert host.get("/site/team", headers={"Authorization": "Bearer nope"}).json()["detail"]["code"] == "unknown_token"
+    assert stages() == [1]
+    roll_out(host, base, auth)
+    host.run(5)
+    assert stages() == [1]            # all updated, the attack has not started
+    host.run(10)
+    assert stages() == [2, 1]         # first wave released
+    answer(host, base, auth, 100)
+    assert stages() == [3, 2, 1]
+    newest = host.get("/site/team", headers=auth).json()["briefs"][0]
+    assert newest["title"] == "Stage 3: an energy and doors screen" and "Hand this" not in newest["markdown"]

@@ -1,7 +1,5 @@
 # Stage 2: the freezers are thawing
 
-*Hand this to a team when its store turns red on the map.*
-
 ## What happened
 
 Software 2.0.0 lets service technicians maintain freezers remotely. A freezer does
