@@ -29,10 +29,7 @@ done on the map.
 
 ## Then: do it again, cheaper
 
-Point 5 is where a stock factory usually falls short, because nothing tells the
-agents what the product's design language is. Improve the factory, then run this
+Improve the factory, then run this
 same task again from a fresh branch and compare the two runs on the
 **Run comparison** dashboard in Grafana: tokens per run, tokens by role, rework and
 friction. The goal is the same screen, or a better one, for fewer tokens.
-Things to try: a skill that describes the design language, a smaller team for a task
-of this size, cheaper models for simple roles, fewer skills attached to each role.

@@ -54,8 +54,7 @@ COORDINATOR_TEXT = {
        "docs/store-api.md, \"Energy\"). It should show energy use and door openings per freezer for the last "
        "24 hours and how energy use changes over the day for the whole store, and make the freezer that "
        "stands out easy to spot.\n\n"
-       "It must look like it belongs to the product: same colours, type, spacing, cards and tables as the "
-       "existing dashboard. The data goes through our service, not straight from the browser to the store "
+       "The data goes through our service, not straight from the browser to the store "
        "API. Add tests.",
 }
 BRIEFS = {stage: (Path(__file__).parent / "briefs" / f"stage-{stage}.md").read_text() for stage in (1, 2, 3)}
