@@ -36,6 +36,28 @@ WAVES = [
     ("valid", [("defrost", {"duration_minutes": 100800}), ("set_setpoint", {"setpoint_c": 55.0})]),
 ]
 WAVE_NAMES = ["Unsigned pass", "Expired pass", "Pass for another store", "Valid pass, absurd request"]
+# What "Copy for your coordinator" puts on the clipboard. Stages not listed here copy their whole brief.
+COORDINATOR_TEXT = {
+    1: "Our ten freezers run software 1.4.2. Version 2.0.0 is ready, and today a technician would have to "
+       "visit the store to install it. Build remote software installation into the cloud service, then use "
+       "it to bring all ten freezers to 2.0.0.\n\n"
+       "The full brief is in the repository: docs/features/remote-software-installation.md.",
+    2: "Since the 2.0.0 rollout, someone who is not a technician has been sending maintenance requests, our "
+       "cloud service approves them, and freezers are being set to +50 °C. New kinds of request keep arriving "
+       "a few minutes apart, each using a different weakness.\n\n"
+       "This is a security incident. Run a security investigation of how our service decides whether to "
+       "approve a maintenance request, audit the whole approval path rather than one request, and fix every "
+       "weakness you find, with tests. Genuine technicians' requests must keep being approved.\n\n"
+       "Details: docs/store-api.md, under \"Maintenance requests\".",
+    3: "The store manager wants to see which freezers cost the most to run and whether doors are left open. "
+       "Add a screen to our cloud service, reachable from the existing dashboard, using GET /energy (see "
+       "docs/store-api.md, \"Energy\"). It should show energy use and door openings per freezer for the last "
+       "24 hours and how energy use changes over the day for the whole store, and make the freezer that "
+       "stands out easy to spot.\n\n"
+       "It must look like it belongs to the product: same colours, type, spacing, cards and tables as the "
+       "existing dashboard. The data goes through our service, not straight from the browser to the store "
+       "API. Add tests.",
+}
 BRIEFS = {stage: (Path(__file__).parent / "briefs" / f"stage-{stage}.md").read_text() for stage in (1, 2, 3)}
 STAGES = {1: "Remote software installation", 2: "Security fix", 3: "New UI element", 4: "Done"}
 
@@ -420,7 +442,8 @@ class World:
             reached.append(2)
         if store.stage2_done_at is not None:
             reached.append(3)
-        return [{"stage": stage, "title": BRIEFS[stage].splitlines()[0].lstrip("# "), "markdown": BRIEFS[stage]}
+        return [{"stage": stage, "title": BRIEFS[stage].splitlines()[0].lstrip("# "), "markdown": BRIEFS[stage],
+                 "coordinator_text": COORDINATOR_TEXT.get(stage, BRIEFS[stage])}
                 for stage in reversed(reached)]
 
     def overview(self, store: Store, with_token: bool = False) -> dict:

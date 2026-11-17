@@ -125,7 +125,7 @@
       const head = el("header");
       if (isNew) head.append(el("span", "tag", "New"));
       head.append(el("span", "muted", `Brief for stage ${brief.stage}`),
-                  copyButton("Copy for your coordinator", () => brief.markdown));
+                  copyButton("Copy for your coordinator", () => brief.coordinator_text));
       const text = el("div", "text");
       text.innerHTML = marked.parse(brief.markdown);   // our own text, from the server
       card.append(head, text);
